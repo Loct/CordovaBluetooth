@@ -28,7 +28,7 @@ var app = {
         receivedElement.setAttribute('style', 'display:block;');
 
         console.log('Received Event: ' + id);
-        var address = "FD94C5ED-747E-0E42-5CE1-510268B5E83F";
+        var address = "054BF614-86DF-80AB-AC7B-16E7C52E11EE";
         var service = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
         var characteristic = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E";
         bluetooth.initialize(function(){
@@ -41,7 +41,8 @@ var app = {
                         console.log("Done connecting")
                         bluetooth.discover(address, function(){
                             console.log("Done discovering")
-                            bluetooth.subscribe(address, service, characteristic).then(function(obj){
+                            var watch = bluetooth.subscribe(address, service, characteristic)
+                            watch.promise.then(function(obj){
                               
                             }, function(err){
                                 console.log(err)
