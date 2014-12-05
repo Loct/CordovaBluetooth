@@ -122,10 +122,11 @@ var bluetoothWrapper = {
           }, obj);
 
           bluetoothWrapper.initialize().then(function(obj){
-
-          }, function(err){
+          },
+          function(err){
 
           })
+
       }, function(err) {
         console.log(err)
         q.reject(err);
