@@ -28,7 +28,7 @@ var app = {
         receivedElement.setAttribute('style', 'display:block;');
 
         console.log('Received Event: ' + id);
-        var address = "054BF614-86DF-80AB-AC7B-16E7C52E11EE";
+        var address = "A2FE5FED-FD85-177B-34D0-2CC528113204";
         var service = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
         var characteristic = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E";
         bluetooth.initialize(function(){
@@ -43,6 +43,9 @@ var app = {
                             console.log("Done discovering")
                             var watch = bluetooth.subscribe(address, service, characteristic)
                             watch.promise.then(function(obj){
+                              if(obj[0] == 2){
+                                console.log("Stop Time:" getTimes(obj.slice(4,8)) + " Start Time: " + getTimes(obj.slice(8,12))
+                              }
                               
                             }, function(err){
                                 console.log(err)
@@ -55,7 +58,29 @@ var app = {
     }
 };
 
-
+var getTimes = function(time)
+{
+    var unixTimeBytes = []
+    for(var i = 0; i < 4; i++)
+    {
+      unixTimeBytes.push(frame[i]);
+    }
+    var unixTime = 0;
+    //reconstructing the timestamp from the 4 bytes
+    //">>> 0"  is needed because JavaScript is stupid and makes it a signed int otherwise, our timestamp won't fit unless it's unsigned int
+    unixTime = ((unixTime << 8) >>> 0) + (unixTimeBytes[3] >>> 0);
+    unixTime = ((unixTime << 8) >>> 0) + (unixTimeBytes[2] >>> 0);
+    unixTime = ((unixTime << 8) >>> 0) + (unixTimeBytes[1] >>> 0);
+    unixTime = ((unixTime << 8) >>> 0) + (unixTimeBytes[0] >>> 0);
+    var date = new Date(unixTime*1000);
+    var year = date.getUTCFullYear();
+    var month = $scope.FormatToTwoDigits(date.getUTCMonth() + 1);
+    var day = $scope.FormatToTwoDigits(date.getUTCDate());
+    var hour = $scope.FormatToTwoDigits(date.getUTCHours());
+    var minute = $scope.FormatToTwoDigits(date.getUTCMinutes());
+    var second = $scope.FormatToTwoDigits(date.getUTCSeconds());
+    return month + "-" + day + " " + hour + ":" + minute
+}
 
 app.initialize();
 
@@ -220,7 +245,9 @@ var bluetooth = {
               console.log("Connecting started")
             } else if(obj.status == "disconnected") {
                 console.log("Device is disconnected, disconnect and retry")
-                this.reconnect(obj.address, function(){});
+                bluetooth.reconnect(obj.address, function(){
+
+                });
             }
           }
         );
