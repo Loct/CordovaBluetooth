@@ -40,18 +40,24 @@ var app = {
           bluetooth.connect(address, function() {
             console.log("Done connecting")
             bluetooth.discover(address, function() {
-              console.log("Done discovering")
-              var watch = bluetooth.subscribe(address, service, characteristic)
-              watch.promise.then(function(obj) {
-                if (obj[0] == 2) {
-                console.log("Stop Time:"
-                  getTimes(obj.slice(4, 8)) + " Start Time: " + getTimes(obj.slice(8, 12))
-                }
+              setTimeout(function(){
 
-                },
-                function(err) {
-                console.log(err)
-                })
+
+              bluetooth.subscribe(address, function(){
+
+              })
+
+              var data = [129,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+              var uint8 = new Uint8Array(data);
+              var serviceUuid = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
+              var characteristicUuid = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E";
+              var response = "noResponse";
+              var obj = {"address":address, "serviceUuid": serviceUuid, "characteristicUuid": characteristicUuid, "value":unit8, "type": response}
+
+              bluetooth.write(obj, function(){
+                console.log("Test")
+              })
+              }, 2000)
               })
             })
           })
