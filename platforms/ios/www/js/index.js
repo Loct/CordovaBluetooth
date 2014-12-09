@@ -31,7 +31,8 @@ var app = {
     var address = "A2FE5FED-FD85-177B-34D0-2CC528113204";
     var service = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
     var characteristic = "6E400003-B5A3-F393-E0A9-E50E24DCCA9E";
-    bluetooth.initialize(function() {
+    // setInterval(function(){
+        bluetooth.initialize(function() {
       console.log("Initialized");
       bluetooth.startScan(null, function() {
         console.log("Done Scanning")
@@ -53,7 +54,7 @@ var app = {
                 })
               })
               setTimeout(function(){
-              var data = [131,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+              var data = [131,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
               var uint8 = new Uint8Array(data);
               var serviceUuid = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
               var characteristicUuid = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E";
@@ -80,13 +81,15 @@ var app = {
               bluetooth.write(obj, function(){
                 console.log("Time")
               })
-              }, 3000)
               }, 2000)
+              }, 1000)
               })
             })
           })
         })
-      })
+      })  
+    // }, 1)
+
     }
   };
 
@@ -103,7 +106,7 @@ var getTimes = function(frame) {
   unixTime = ((unixTime << 8) >>> 0) + (unixTimeBytes[1] >>> 0);
   unixTime = ((unixTime << 8) >>> 0) + (unixTimeBytes[0] >>> 0);
   var date = new Date(unixTime * 1000);
-  return date
+  return unixTime * 1000;
 }
 
 function getBytes(byte, numberOfBits)
@@ -201,6 +204,17 @@ var bluetooth = {
     },
     function(obj) {
     if (obj.status == "scanResult") {
+      if(obj.advertisement != null){
+        var ble = ""
+        var address = bluetoothWrapper.encodedStringToBytes(obj.advertisement);
+        console.log(address)
+        for (var i = 2; i < address.length; i++) {
+          ble += address[i].toString(16) + ":";
+        };
+        ble = ble.substring(0,ble.length - 1);
+        console.log(ble);
+        obj.advertisement = ble
+      }
       console.log("Scan success");
       if (params != "" && params != null && params != undefined) {
       clearTimeout(scanTimeout);
@@ -480,34 +494,33 @@ var bluetooth = {
     console.log(JSON.stringify(err, null, 4));
     },
     function(obj) {
+      console.log(obj.status)
     if (obj.status == "subscribedResult") {
       var byteArr = bluetoothWrapper.encodedStringToBytes(obj.value)
-      console.log(byteArr);
+      console.log(byteArr)
       if(byteArr[0] == 5){
         callback(dataArr);
       } else if(byteArr[2]){
-        //console.log(byteArr.slice(4, 8));
-        //console.log(byteArr.slice(8, 11));
-        //console.log(getTimes(byteArr.substring(4, 8)) + "  " + getTimes(byteArr.substring(8, 11)))
         var stopTime = []
         var startTime = []
         for (var i = 4; i < 8; i++) {
           stopTime.push(byteArr[i])
           startTime.push(byteArr[i + 4])
-        };
-        console.log(getTimes(stopTime));
-        console.log(getTimes(startTime));
-        dataArr.push(byteArr);
+        }
+        var obj = {"startTime": startTime, "stopTime": stopTime}
+        dataArr.push(obj);
+        var data = [130,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        var uint8 = new Uint8Array(data);
+        var serviceUuid = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
+        var characteristicUuid = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E";
+        var response = "response";
+        var obj = {"address":address, "serviceUuid": service, "characteristicUuid": characteristicUuid, "value":bluetoothWrapper.bytesToEncodedString(uint8), "type": response}
+        bluetooth.write(obj, function(){
+          console.log("Ack")
+        })
+      } else if (byteArr[0] == 3){
+        console.log(bytesArr)
       }
-      var data = [130,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-      var uint8 = new Uint8Array(data);
-      var serviceUuid = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
-      var characteristicUuid = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E";
-      var response = "response";
-      var obj = {"address":address, "serviceUuid": service, "characteristicUuid": characteristicUuid, "value":bluetoothWrapper.bytesToEncodedString(uint8), "type": response}
-      bluetooth.write(obj, function(){
-        console.log("Ack")
-      })
     }
     });
   },
