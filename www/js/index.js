@@ -43,20 +43,44 @@ var app = {
               setTimeout(function(){
 
 
-              bluetooth.subscribe(address, function(){
-
+              bluetooth.subscribe(address, service, characteristic, function(data){
+                bluetooth.unsubscribe(address, service, characteristic, function(){
+                  bluetooth.disconnect(address, function(){
+                    bluetooth.close(address, function(){
+                      console.log("Closed")
+                    })
+                  })
+                })
               })
-
-              var data = [129,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+              setTimeout(function(){
+              var data = [131,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
               var uint8 = new Uint8Array(data);
               var serviceUuid = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
               var characteristicUuid = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E";
-              var response = "noResponse";
-              var obj = {"address":address, "serviceUuid": serviceUuid, "characteristicUuid": characteristicUuid, "value":unit8, "type": response}
-
+              var response = "response";
+              var obj = {"address":address, "serviceUuid": service, "characteristicUuid": characteristicUuid, "value":bluetoothWrapper.bytesToEncodedString(uint8), "type": response}
               bluetooth.write(obj, function(){
-                console.log("Test")
+                console.log("Request Data")
               })
+              }, 5000)
+
+
+              setTimeout(function(){
+              var data = [131,2,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+              var time = getBytes(((new Date).getTime() / 1000), 32);
+              console.log(time);
+              for (var i = time.length - 1; i >= 0; i--) {
+                data[i + 4] = time[i];
+              };
+              var uint8 = new Uint8Array(data);
+              var serviceUuid = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
+              var characteristicUuid = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E";
+              var response = "response";
+              var obj = {"address":address, "serviceUuid": service, "characteristicUuid": characteristicUuid, "value":bluetoothWrapper.bytesToEncodedString(uint8), "type": response}
+              bluetooth.write(obj, function(){
+                console.log("Time")
+              })
+              }, 3000)
               }, 2000)
               })
             })
@@ -66,7 +90,7 @@ var app = {
     }
   };
 
-var getTimes = function(time) {
+var getTimes = function(frame) {
   var unixTimeBytes = []
   for (var i = 0; i < 4; i++) {
   unixTimeBytes.push(frame[i]);
@@ -79,14 +103,33 @@ var getTimes = function(time) {
   unixTime = ((unixTime << 8) >>> 0) + (unixTimeBytes[1] >>> 0);
   unixTime = ((unixTime << 8) >>> 0) + (unixTimeBytes[0] >>> 0);
   var date = new Date(unixTime * 1000);
-  var year = date.getUTCFullYear();
-  var month = $scope.FormatToTwoDigits(date.getUTCMonth() + 1);
-  var day = $scope.FormatToTwoDigits(date.getUTCDate());
-  var hour = $scope.FormatToTwoDigits(date.getUTCHours());
-  var minute = $scope.FormatToTwoDigits(date.getUTCMinutes());
-  var second = $scope.FormatToTwoDigits(date.getUTCSeconds());
-  return month + "-" + day + " " + hour + ":" + minute
+  return unixTime * 1000;
 }
+
+function getBytes(byte, numberOfBits)
+  {
+
+      var bytes = new Array();
+      
+      bytes[0] = byte & 0xff;
+
+      if(numberOfBits > 8)
+      {
+          bytes[1] = (byte >> 8) & 0xff;
+      }
+      
+      if(numberOfBits > 16)
+      {
+          bytes[2] = (byte >> 16) & 0xff;
+      }
+      
+      if(numberOfBits > 24)
+      {
+          bytes[3] = (byte >> 24) & 0xff;
+      }
+      console.log(bytes);
+      return bytes;
+  }
 
 app.initialize();
 
@@ -423,8 +466,8 @@ var bluetooth = {
   "address": "ECC037FD-72AE-AFC5-9213-CA785B3B5C63"
   }
   **/
-  subscribe: function(address, service, characteristic) {
-  var q = $.Deferred();
+  subscribe: function(address, service, characteristic, callback) {
+  var dataArr = [];
   var servChar = {
     "address": address,
     "serviceUuid": service,
@@ -435,16 +478,33 @@ var bluetooth = {
     function(result) {},
     function(err) {
     console.log(JSON.stringify(err, null, 4));
-    q.reject(err)
     },
     function(obj) {
     if (obj.status == "subscribedResult") {
-      console.log(bluetoothWrapper.encodedStringToBytes(obj.value));
-      q.notify(bluetoothWrapper.encodedStringToBytes(obj.value));
+      var byteArr = bluetoothWrapper.encodedStringToBytes(obj.value)
+      if(byteArr[0] == 5){
+        callback(dataArr);
+      } else if(byteArr[2]){
+        var stopTime = []
+        var startTime = []
+        for (var i = 4; i < 8; i++) {
+          stopTime.push(byteArr[i])
+          startTime.push(byteArr[i + 4])
+        }
+        var obj = {"startTime": startTime, "stopTime": stopTime}
+        dataArr.push(obj);
+      }
+      var data = [130,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+      var uint8 = new Uint8Array(data);
+      var serviceUuid = "6E400001-B5A3-F393-E0A9-E50E24DCCA9E";
+      var characteristicUuid = "6E400002-B5A3-F393-E0A9-E50E24DCCA9E";
+      var response = "response";
+      var obj = {"address":address, "serviceUuid": service, "characteristicUuid": characteristicUuid, "value":bluetoothWrapper.bytesToEncodedString(uint8), "type": response}
+      bluetooth.write(obj, function(){
+        console.log("Ack")
+      })
     }
     });
-
-  return watch
   },
 
   /**
@@ -464,8 +524,9 @@ var bluetooth = {
   "address": "ECC037FD-72AE-AFC5-9213-CA785B3B5C63"
   }
   **/
-  unsubscribe: function(serviceUuid, characteristicUuid, callback) {
+  unsubscribe: function(address, serviceUuid, characteristicUuid, callback) {
   var servChar = {
+    "address": address,
     "serviceUuid": serviceUuid,
     "characteristicUuid": characteristicUuid
   }
@@ -502,7 +563,6 @@ var bluetooth = {
   }
   **/
   write: function(paramsObj, callback) {
-  paramsObj.value = bluetoothWrapper.bytesToEncodedString(paramsObj.value)
   if (paramsObj.type === "noResponse") {
     //setTimeout(function() {callback()}, 1000);
     var watch = bluetoothWrapper.write(paramsObj)
@@ -522,7 +582,7 @@ var bluetooth = {
       console.log(JSON.stringify(err, null, 4));
     },
     function(obj) {
-      callback();
+      callback()
     });
   }
   },
